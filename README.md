@@ -29,7 +29,7 @@
 * It smoothens out short-term price fluctuations and highlights the general direction of the trend
 
 <div>
-  <img src="assets/formula.png" width="350">
+  <img src="assets/formula.png">
 </div>
 
 [Learn more](https://www.investopedia.com/terms/s/sma.asp)
@@ -62,7 +62,7 @@
 * This could potentially signal a downward momentum as price falls below historical average
 
 <div>
-  <img src="assets/graph1.png" width="500">
+  <img src="assets/graph1.png">
 </div>
 
 > Line graph from sample binance partial book data
