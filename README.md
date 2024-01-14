@@ -61,6 +61,12 @@
 > Instance of mid price dipping below 5mins SMA as orders get fulfilled
 * This could potentially signal a downward momentum as price falls below historical average
 
+<div>
+  <img src="assets/graph1.png" width="500">
+</div>
+
+> Line graph from sample binance partial book data
+
 ## Improvements
 #### Considering other timeframes
 * Shorter timeframes can react more quickly to price changes
