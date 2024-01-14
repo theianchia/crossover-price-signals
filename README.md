@@ -1,14 +1,12 @@
 <div align="center">
   <h3>Short-term Crossover Tracking with BTC/USDT</h3>
-  <p>Identifying trends and signals using Crossovers on real-time BTC/USDT prices</p>
+  <p>Identifying trends using SMA crossovers on real-time BTC/USDT prices</p>
 </div>
 
 ## About The Project
-This project aims to gain insights into market dynamics by using
-* Simple Moving Average (SMA) as a technical indicator to predict future price trends
-* Bid-Ask Spread balance to understand buying and selling pressure and market sentiments
-
-By comparing SMA and the current mid-price, we look for `crossovers` which might signal potential momentum as the price rises above or falls below the short-term historical average
+* This project aims to gain insights into market dynamics by using Simple Moving Average (SMA) as a technical indicator to predict future price trends
+* By comparing SMA and the current mid-price, we look for `crossovers` which might signal potential momentum or market sentiment as the price rises above or falls below the short-term average
+* We are also able to access the liquidity of the market and overall ease for traders to enter and exit positions by accessing the bid-ask spread
 
 ##### Real-time BTC/USDT price data from Binance
 * [KLine/Candlestick Stream](https://binance-docs.github.io/apidocs/spot/en/#kline-candlestick-streams)
@@ -19,10 +17,6 @@ By comparing SMA and the current mid-price, we look for `crossovers` which might
 * Data is instaneously processed and written into csv files for further post-analysis
 * The closing price from the 1min KLine stream data is used to calculate the SMA using a 5mins timeframe
 * The mid price is calculated by taking the average of the best bid and the best ask price from the Partial Book
-* Spread Indicator
-  * `BID`: Mid price is closer to the best bid price
-  * `ASK`: Mid price is closer to the best ask price
-  * `NEUTRAL`: Mid price is the equally close to the best bid and the best ask price
 
 * Crossover Indicator
   * `OVER`: Mid price rises above the SMA
@@ -52,13 +46,29 @@ By comparing SMA and the current mid-price, we look for `crossovers` which might
    cd app
    python main.py
    ```
-3. WebSocket handler endpoints
+3. WebSocket handlers
    ```
    ws://127.0.0.1:8888/binance-klines
    ws://127.0.0.1:8888/binance-partial-book
    ```
 
 ## Results
-
+| Timestamp | Mid Price | 5mins SMA | Spread | Crossover |
+| ----- | ----- | ----- | ----- | ----- |
+| 2024-01-14 13:37:05 | 42816.005000000005 | 42815.39399999999 | 0.010000000002037268 | Over |
+|2024-01-14 13:37:06 | 42815.5 | 42815.39399999999 | -1.0 | Over |
+| 2024-01-14 13:37:07 | 42814.994999999995 | 42815.39399999999 | 0.010000000002037268 | Under |
+> Instance of mid price dipping below 5mins SMA as orders get fulfilled
+* This could potentially signal a downward momentum as price falls below historical average
 
 ## Improvements
+#### Considering other timeframes
+* Shorter timeframes can react more quickly to price changes
+* Longer timeframes can provide a smoother trend indication but may lag in responding to rapid price movements
+
+#### Other technical indicators for crossovers
+* Exponential Moving Average (EMA) is another technical indicator that gives more weight to recent prices, making it more responsive to recent market changes
+* This might be more suitable for traders focused on short-term movements as EMA reacts more quickly to changes in price
+
+#### Likelihood of false signals
+* False signals can be more prevalent in choppioer markets and additional indicators and filters should be used to reduce the liklihood of acting on false signals

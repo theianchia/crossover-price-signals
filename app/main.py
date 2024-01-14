@@ -13,7 +13,7 @@ TRADING_PAIR = "btcusdt"
 KLINE_INTERVAL = "1m"
 PARTIAL_BOOK_INTERVAL = "1000ms"
 KLINE_COLUMN_HEADERS = ["Timestamp", "Open", "High", "Low", "Close", "Volume"]
-PARTIAL_BOOK_COLUMN_HEADERS = ["Timestamp", "Best Bid Price", "Best Ask Price", "Mid Price", "5mins SMA", "Spread", "Balance", "Crossover"]
+PARTIAL_BOOK_COLUMN_HEADERS = ["Timestamp", "Best Bid Price", "Best Ask Price", "Mid Price", "5mins SMA", "Spread", "Crossover"]
 
 current_total_close_price = 0
 current_total_periods = 0
@@ -23,12 +23,6 @@ current_simple_moving_average = 0
 class CrossoverIndicator(Enum):
     OVER = "Over"
     UNDER = "Under"
-    NEUTRAL = "Neutral"
-
-
-class BidAskImbalanceIndicator(Enum):
-    BID = "Bid"
-    ASK = "Ask"
     NEUTRAL = "Neutral"
 
 
@@ -122,14 +116,7 @@ class BinancePartialBookWebSocketHandler(tornado.websocket.WebSocketHandler):
                             
                             spread = float(best_ask_price) - float(best_bid_price)
 
-                            balance = BidAskImbalanceIndicator.ASK.value
-                            if float(best_ask_price) - mid_price > mid_price - float(best_bid_price):
-                                balance = BidAskImbalanceIndicator.BID.value
-                            elif float(best_ask_price) - mid_price == mid_price - float(best_bid_price):
-                                balance = BidAskImbalanceIndicator.NEUTRAL.value
-
-
-                            csv_data = [formatted_datetime, best_bid_price, best_ask_price, mid_price, current_simple_moving_average, spread, balance, crossover]
+                            csv_data = [formatted_datetime, best_bid_price, best_ask_price, mid_price, current_simple_moving_average, spread, crossover]
                             writer.writerow(dict(zip(PARTIAL_BOOK_COLUMN_HEADERS, csv_data)))
 
             except Exception as e:
