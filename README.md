@@ -10,13 +10,24 @@ This project aims to gain insights into market dynamics by using
 
 By comparing SMA and the current mid-price, we look for `crossovers` which might signal potential momentum as the price rises above or falls below the short-term historical average
 
-##### Technical Implementation
-* Real-time, low latency `WebSocket` communication is used to consume highly-frequent market data from Binance, whilst minimising overhead when maintaining the persistent connection
-* Data is instaneously processed and written into csv files for further post-analysis
-
 ##### Real-time BTC/USDT price data from Binance
 * [KLine/Candlestick Stream](https://binance-docs.github.io/apidocs/spot/en/#kline-candlestick-streams)
 * [Partial Book Depth Stream](https://binance-docs.github.io/apidocs/spot/en/#partial-book-depth-streams)
+
+##### Technical Implementation
+* Real-time, low latency `WebSocket` communication is used to consume highly-frequent market data from Binance, whilst minimising overhead when maintaining the persistent connection
+* Data is instaneously processed and written into csv files for further post-analysis
+* The closing price from the 1min KLine stream data is used to calculate the SMA using a 5mins timeframe
+* The mid price is calculated by taking the average of the best bid and the best ask price from the Partial Book
+* Spread Indicator
+  * `BID`: Mid price is closer to the best bid price
+  * `ASK`: Mid price is closer to the best ask price
+  * `NEUTRAL`: Mid price is the equally close to the best bid and the best ask price
+
+* Crossover Indicator
+  * `OVER`: Mid price rises above the SMA
+  * `UNDER`: Mid price falls below the SMA
+  * `NEUTRAL`: Mid price is equal to the SMA
 
 ### What is Simple Moving Average (SMA)
 * It is a calculation that represents the average over a set of prices within a certain timeframe

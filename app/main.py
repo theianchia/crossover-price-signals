@@ -10,9 +10,9 @@ from datetime import datetime
 from enum import Enum
 
 TRADING_PAIR = "btcusdt"
-KLINES_INTERVAL = "1m"
+KLINE_INTERVAL = "1m"
 PARTIAL_BOOK_INTERVAL = "1000ms"
-KLINES_COLUMN_HEADERS = ["Timestamp", "Open", "High", "Low", "Close", "Volume"]
+KLINE_COLUMN_HEADERS = ["Timestamp", "Open", "High", "Low", "Close", "Volume"]
 PARTIAL_BOOK_COLUMN_HEADERS = ["Timestamp", "Best Bid Price", "Best Ask Price", "Mid Price", "5mins SMA", "Spread", "Balance", "Crossover"]
 
 current_total_close_price = 0
@@ -32,35 +32,35 @@ class BidAskImbalanceIndicator(Enum):
     NEUTRAL = "Neutral"
 
 
-class BinanceKlinesWebSocketHandler(tornado.websocket.WebSocketHandler):
-    async def binance_klines_ws(self, uri):
+class BinanceKlineWebSocketHandler(tornado.websocket.WebSocketHandler):
+    async def binance_kline_ws(self, uri):
         async with websockets.connect(uri) as ws:
             try:
                 while True:
                     data = await ws.recv()
                     self.write_message(f"Received data: {data}")
 
-                    klines_data = json.loads(data)
-                    if klines_data.get('k', {}).get('x'):
-                        timestamp = klines_data['k']['t'] // 1000
+                    kline_data = json.loads(data)
+                    if kline_data.get('k', {}).get('x'):
+                        timestamp = kline_data['k']['t'] // 1000
                         datetime_obj = datetime.utcfromtimestamp(timestamp)
                         formatted_datetime = datetime_obj.strftime('%Y-%m-%d %H:%M:%S')
-                        open_price = klines_data['k']['o']
-                        high_price = klines_data['k']['h']
-                        low_price = klines_data['k']['l']
-                        close_price = klines_data['k']['c']
-                        volume = klines_data['k']['v']
+                        open_price = kline_data['k']['o']
+                        high_price = kline_data['k']['h']
+                        low_price = kline_data['k']['l']
+                        close_price = kline_data['k']['c']
+                        volume = kline_data['k']['v']
 
                         print(f"Writing to CSV at {formatted_datetime}")
 
-                        with open('binance_klines.csv', 'a', newline='') as csvfile:
-                            writer = csv.DictWriter(csvfile, fieldnames=KLINES_COLUMN_HEADERS)
+                        with open('binance_kline.csv', 'a', newline='') as csvfile:
+                            writer = csv.DictWriter(csvfile, fieldnames=KLINE_COLUMN_HEADERS)
 
                             if csvfile.tell() == 0:
                                 writer.writeheader()
 
                             csv_data = [formatted_datetime, open_price, high_price, low_price, close_price, volume]
-                            writer.writerow(dict(zip(KLINES_COLUMN_HEADERS, csv_data)))
+                            writer.writerow(dict(zip(KLINE_COLUMN_HEADERS, csv_data)))
 
                         global current_total_close_price
                         global current_total_periods
@@ -77,12 +77,12 @@ class BinanceKlinesWebSocketHandler(tornado.websocket.WebSocketHandler):
                 print(f"Error processing message: {e}")
 
     def open(self):
-        print("Binance Klines WebSocket opened")
-        binance_klines_uri = f"wss://stream.binance.com:9443/ws/{TRADING_PAIR}@kline_{KLINES_INTERVAL}"
-        asyncio.create_task(self.binance_klines_ws(binance_klines_uri))
+        print("Binance Kline WebSocket opened")
+        binance_kline_uri = f"wss://stream.binance.com:9443/ws/{TRADING_PAIR}@kline_{KLINE_INTERVAL}"
+        asyncio.create_task(self.binance_kline_ws(binance_kline_uri))
 
     def on_close(self):
-        print("Binance Klines WebSocket closed")
+        print("Binance Kline WebSocket closed")
 
 
 class BinancePartialBookWebSocketHandler(tornado.websocket.WebSocketHandler):
@@ -151,7 +151,7 @@ class MainHandler(tornado.web.RequestHandler):
 def make_app():
     return tornado.web.Application([
         (r"/", MainHandler),
-        (r"/binance-klines", BinanceKlinesWebSocketHandler),
+        (r"/binance-kline", BinanceKlineWebSocketHandler),
         (r"/binance-partial-book", BinancePartialBookWebSocketHandler),
     ])
 
