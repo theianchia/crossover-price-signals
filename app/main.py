@@ -7,18 +7,25 @@ import websockets
 import json
 import csv
 from datetime import datetime
+from enum import Enum
 
 TRADING_PAIR = "btcusdt"
 KLINES_INTERVAL = "1m"
 PARTIAL_BOOK_INTERVAL = "1000ms"
 KLINES_COLUMN_HEADERS = ["Timestamp", "Open", "High", "Low", "Close", "Volume"]
-PARTIAL_BOOK_COLUMN_HEADERS = ["Timestamp", "Best Bid Price", "Best Ask Price", "Mid Price"]
+PARTIAL_BOOK_COLUMN_HEADERS = ["Timestamp", "Best Bid Price", "Best Ask Price", "Mid Price", "5mins SMA", "Action"]
 
 current_total_close_price = 0
 current_total_periods = 0
 current_simple_moving_average = 0
 
 current_mid_price = 0
+
+
+class CrossoverIndicator(Enum):
+    NA = "NA"
+    BUY = "BUY"
+    WAIT = "WAIT"
 
 
 class BinanceKlinesWebSocketHandler(tornado.websocket.WebSocketHandler):
@@ -86,26 +93,30 @@ class BinancePartialBookWebSocketHandler(tornado.websocket.WebSocketHandler):
                     timestamp = partial_book_data['E'] // 1000
                     datetime_obj = datetime.utcfromtimestamp(timestamp)
                     formatted_datetime = datetime_obj.strftime('%Y-%m-%d %H:%M:%S')
+
                     best_bid_price, best_bid_quantity, best_ask_price, best_ask_quantity = 0, 0, 0, 0
                     if 'b' in partial_book_data and len(partial_book_data['b']) > 0:
                         best_bid_price, best_bid_quantity = partial_book_data['b'][0]
-                        print(f"Best bid price: {best_bid_price}, best bid quantity: {best_bid_quantity}")
                     if 'a' in partial_book_data and len(partial_book_data['a']) > 0:
                         best_ask_price, best_ask_quantity = partial_book_data['a'][0]
-                        print(f"Best ask price: {best_ask_price}, best ask quantity: {best_ask_quantity}")
                     
                     global current_mid_price
                     current_mid_price = (float(best_bid_price) + float(best_ask_price)) / 2
-                    print(f"Current mid price: {current_mid_price}")
+                    print(f"Current mid price at {formatted_datetime}: {current_mid_price}")
 
-                    with open('binance_partial_book.csv', 'a', newline='') as csvfile:
-                        writer = csv.DictWriter(csvfile, fieldnames=PARTIAL_BOOK_COLUMN_HEADERS)
+                    if current_simple_moving_average != 0:
+                        with open('binance_partial_book.csv', 'a', newline='') as csvfile:
+                            writer = csv.DictWriter(csvfile, fieldnames=PARTIAL_BOOK_COLUMN_HEADERS)
 
-                        if csvfile.tell() == 0:
-                            writer.writeheader()
+                            if csvfile.tell() == 0:
+                                writer.writeheader()
+                            
+                            action = CrossoverIndicator.WAIT.value
+                            if current_mid_price > current_simple_moving_average:
+                                action = CrossoverIndicator.BUY.value
 
-                        csv_data = [formatted_datetime, best_bid_price, best_ask_price, current_mid_price]
-                        writer.writerow(dict(zip(PARTIAL_BOOK_COLUMN_HEADERS, csv_data)))
+                            csv_data = [formatted_datetime, best_bid_price, best_ask_price, current_mid_price, current_simple_moving_average, action]
+                            writer.writerow(dict(zip(PARTIAL_BOOK_COLUMN_HEADERS, csv_data)))
 
             except Exception as e:
                 print(f"Error processing message: {e}")
