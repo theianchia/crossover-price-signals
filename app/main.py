@@ -8,25 +8,20 @@ import json
 import csv
 from datetime import datetime
 
-COLUMN_HEADERS = ["Timestamp", "Open", "High", "Low", "Close", "Volume"]
+TRADING_PAIR = "btcusdt"
+KLINES_INTERVAL = "1m"
+PARTIAL_BOOK_INTERVAL = "1000ms"
+KLINES_COLUMN_HEADERS = ["Timestamp", "Open", "High", "Low", "Close", "Volume"]
+PARTIAL_BOOK_COLUMN_HEADERS = ["Timestamp", "Best Bid Price", "Best Ask Price", "Mid Price"]
 
 current_total_close_price = 0
 current_total_periods = 0
 current_simple_moving_average = 0
 
-class WebSocketHandler(tornado.websocket.WebSocketHandler):
-    def open(self):
-        print("WebSocket opened")
-
-    def on_message(self, message):
-        print(f"Received message: {message}")
-        self.write_message(f"You sent: {message}")
-
-    def on_close(self):
-        print("WebSocket closed")
+current_mid_price = 0
 
 
-class BinanceWebSocketHandler(tornado.websocket.WebSocketHandler):
+class BinanceKlinesWebSocketHandler(tornado.websocket.WebSocketHandler):
     async def binance_klines_ws(self, uri):
         async with websockets.connect(uri) as ws:
             try:
@@ -34,18 +29,32 @@ class BinanceWebSocketHandler(tornado.websocket.WebSocketHandler):
                     data = await ws.recv()
                     self.write_message(f"Received data: {data}")
 
-                    kline_data = json.loads(data)
-                    if kline_data.get('k', {}).get('x'):
-                        timestamp = kline_data['k']['t'] // 1000
+                    klines_data = json.loads(data)
+                    if klines_data.get('k', {}).get('x'):
+                        timestamp = klines_data['k']['t'] // 1000
                         datetime_obj = datetime.utcfromtimestamp(timestamp)
                         formatted_datetime = datetime_obj.strftime('%Y-%m-%d %H:%M:%S')
-                        open_price = kline_data['k']['o']
-                        high_price = kline_data['k']['h']
-                        low_price = kline_data['k']['l']
-                        close_price = kline_data['k']['c']
-                        volume = kline_data['k']['v']
+                        open_price = klines_data['k']['o']
+                        high_price = klines_data['k']['h']
+                        low_price = klines_data['k']['l']
+                        close_price = klines_data['k']['c']
+                        volume = klines_data['k']['v']
 
-                        current_total_close_price += close_price
+                        print(f"Writing to CSV at {formatted_datetime}")
+
+                        with open('binance_klines.csv', 'a', newline='') as csvfile:
+                            writer = csv.DictWriter(csvfile, fieldnames=KLINES_COLUMN_HEADERS)
+
+                            if csvfile.tell() == 0:
+                                writer.writeheader()
+
+                            csv_data = [formatted_datetime, open_price, high_price, low_price, close_price, volume]
+                            writer.writerow(dict(zip(KLINES_COLUMN_HEADERS, csv_data)))
+
+                        global current_total_close_price
+                        global current_total_periods
+                        global current_simple_moving_average
+                        current_total_close_price += float(close_price)
                         current_total_periods += 1
                         if current_total_periods == 5:
                             current_simple_moving_average = current_total_close_price / current_total_periods
@@ -53,29 +62,61 @@ class BinanceWebSocketHandler(tornado.websocket.WebSocketHandler):
                             current_total_close_price = 0
                             current_total_periods = 0
 
-                        print(f"Writing to CSV at {formatted_datetime}")
+            except Exception as e:
+                print(f"Error processing message: {e}")
 
-                        with open('binance_klines.csv', 'a', newline='') as csvfile:
-                            writer = csv.DictWriter(csvfile, fieldnames=COLUMN_HEADERS)
+    def open(self):
+        print("Binance Klines WebSocket opened")
+        binance_klines_uri = f"wss://stream.binance.com:9443/ws/{TRADING_PAIR}@kline_{KLINES_INTERVAL}"
+        asyncio.create_task(self.binance_klines_ws(binance_klines_uri))
 
-                            if csvfile.tell() == 0:
-                                writer.writeheader()
+    def on_close(self):
+        print("Binance Klines WebSocket closed")
 
-                            csv_data = [formatted_datetime, open_price, high_price, low_price, close_price, volume]
-                            writer.writerow(dict(zip(COLUMN_HEADERS, csv_data)))
+
+class BinancePartialBookWebSocketHandler(tornado.websocket.WebSocketHandler):
+    async def binance_partial_book_ws(self, uri):
+        async with websockets.connect(uri) as ws:
+            try:
+                while True:
+                    data = await ws.recv()
+                    self.write_message(f"Received data: {data}")
+
+                    partial_book_data = json.loads(data)
+                    timestamp = partial_book_data['E'] // 1000
+                    datetime_obj = datetime.utcfromtimestamp(timestamp)
+                    formatted_datetime = datetime_obj.strftime('%Y-%m-%d %H:%M:%S')
+                    best_bid_price, best_bid_quantity, best_ask_price, best_ask_quantity = 0, 0, 0, 0
+                    if 'b' in partial_book_data and len(partial_book_data['b']) > 0:
+                        best_bid_price, best_bid_quantity = partial_book_data['b'][0]
+                        print(f"Best bid price: {best_bid_price}, best bid quantity: {best_bid_quantity}")
+                    if 'a' in partial_book_data and len(partial_book_data['a']) > 0:
+                        best_ask_price, best_ask_quantity = partial_book_data['a'][0]
+                        print(f"Best ask price: {best_ask_price}, best ask quantity: {best_ask_quantity}")
+                    
+                    global current_mid_price
+                    current_mid_price = (float(best_bid_price) + float(best_ask_price)) / 2
+                    print(f"Current mid price: {current_mid_price}")
+
+                    with open('binance_partial_book.csv', 'a', newline='') as csvfile:
+                        writer = csv.DictWriter(csvfile, fieldnames=PARTIAL_BOOK_COLUMN_HEADERS)
+
+                        if csvfile.tell() == 0:
+                            writer.writeheader()
+
+                        csv_data = [formatted_datetime, best_bid_price, best_ask_price, current_mid_price]
+                        writer.writerow(dict(zip(PARTIAL_BOOK_COLUMN_HEADERS, csv_data)))
 
             except Exception as e:
                 print(f"Error processing message: {e}")
 
     def open(self):
-        print("WebSocket opened")
-        trading_pair = "btcusdt"
-        interval = "1m"
-        binance_kline_uri = f"wss://stream.binance.com:9443/ws/{trading_pair}@kline_{interval}"
-        asyncio.create_task(self.binance_klines_ws(uri))
+        print("Binance Partial Book WebSocket opened")
+        binance_partial_book_uri = f"wss://stream.binance.com:9443/ws/{TRADING_PAIR}@depth@{PARTIAL_BOOK_INTERVAL}"
+        asyncio.create_task(self.binance_partial_book_ws(binance_partial_book_uri))
 
     def on_close(self):
-        print("WebSocket closed")
+        print("Binance Partial Book WebSocket closed")
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -85,9 +126,10 @@ class MainHandler(tornado.web.RequestHandler):
 def make_app():
     return tornado.web.Application([
         (r"/", MainHandler),
-        (r"/ws", WebSocketHandler),
-        (r"/binance", BinanceWebSocketHandler),
+        (r"/binance-klines", BinanceKlinesWebSocketHandler),
+        (r"/binance-partial-book", BinancePartialBookWebSocketHandler),
     ])
+
 
 if __name__ == "__main__":
     app = make_app()
