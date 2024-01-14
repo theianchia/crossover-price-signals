@@ -13,19 +13,23 @@ TRADING_PAIR = "btcusdt"
 KLINES_INTERVAL = "1m"
 PARTIAL_BOOK_INTERVAL = "1000ms"
 KLINES_COLUMN_HEADERS = ["Timestamp", "Open", "High", "Low", "Close", "Volume"]
-PARTIAL_BOOK_COLUMN_HEADERS = ["Timestamp", "Best Bid Price", "Best Ask Price", "Mid Price", "5mins SMA", "Action"]
+PARTIAL_BOOK_COLUMN_HEADERS = ["Timestamp", "Best Bid Price", "Best Ask Price", "Mid Price", "5mins SMA", "Spread", "Balance", "Crossover"]
 
 current_total_close_price = 0
 current_total_periods = 0
 current_simple_moving_average = 0
 
-current_mid_price = 0
-
 
 class CrossoverIndicator(Enum):
-    NA = "NA"
-    BUY = "BUY"
-    WAIT = "WAIT"
+    OVER = "Over"
+    UNDER = "Under"
+    NEUTRAL = "Neutral"
+
+
+class BidAskImbalanceIndicator(Enum):
+    BID = "Bid"
+    ASK = "Ask"
+    NEUTRAL = "Neutral"
 
 
 class BinanceKlinesWebSocketHandler(tornado.websocket.WebSocketHandler):
@@ -99,10 +103,9 @@ class BinancePartialBookWebSocketHandler(tornado.websocket.WebSocketHandler):
                         best_bid_price, best_bid_quantity = partial_book_data['b'][0]
                     if 'a' in partial_book_data and len(partial_book_data['a']) > 0:
                         best_ask_price, best_ask_quantity = partial_book_data['a'][0]
-                    
-                    global current_mid_price
-                    current_mid_price = (float(best_bid_price) + float(best_ask_price)) / 2
-                    print(f"Current mid price at {formatted_datetime}: {current_mid_price}")
+
+                    mid_price = (float(best_bid_price) + float(best_ask_price)) / 2
+                    print(f"Current mid price at {formatted_datetime}: {mid_price}")
 
                     if current_simple_moving_average != 0:
                         with open('binance_partial_book.csv', 'a', newline='') as csvfile:
@@ -111,11 +114,22 @@ class BinancePartialBookWebSocketHandler(tornado.websocket.WebSocketHandler):
                             if csvfile.tell() == 0:
                                 writer.writeheader()
                             
-                            action = CrossoverIndicator.WAIT.value
-                            if current_mid_price > current_simple_moving_average:
-                                action = CrossoverIndicator.BUY.value
+                            crossover = CrossoverIndicator.UNDER.value
+                            if mid_price > current_simple_moving_average:
+                                crossover = CrossoverIndicator.OVER.value
+                            elif mid_price == current_simple_moving_average:
+                                crossover = CrossoverIndicator.NEUTRAL.value
+                            
+                            spread = float(best_ask_price) - float(best_bid_price)
 
-                            csv_data = [formatted_datetime, best_bid_price, best_ask_price, current_mid_price, current_simple_moving_average, action]
+                            balance = BidAskImbalanceIndicator.ASK.value
+                            if float(best_ask_price) - mid_price > mid_price - float(best_bid_price):
+                                balance = BidAskImbalanceIndicator.BID.value
+                            elif float(best_ask_price) - mid_price == mid_price - float(best_bid_price):
+                                balance = BidAskImbalanceIndicator.NEUTRAL.value
+
+
+                            csv_data = [formatted_datetime, best_bid_price, best_ask_price, mid_price, current_simple_moving_average, spread, balance, crossover]
                             writer.writerow(dict(zip(PARTIAL_BOOK_COLUMN_HEADERS, csv_data)))
 
             except Exception as e:
