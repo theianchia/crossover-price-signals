@@ -12,12 +12,15 @@ from enum import Enum
 TRADING_PAIR = "btcusdt"
 KLINE_INTERVAL = "1m"
 PARTIAL_BOOK_INTERVAL = "1000ms"
+NUMBER_OF_PERIODS = 5
+SMOOTHING_FACTOR = 2
 KLINE_COLUMN_HEADERS = ["Timestamp", "Open", "High", "Low", "Close", "Volume"]
 PARTIAL_BOOK_COLUMN_HEADERS = ["Timestamp", "Best Bid Price", "Best Ask Price", "Mid Price", "5mins SMA", "Spread", "Crossover"]
 
-current_total_close_price = 0
-current_total_periods = 0
+close_price_window = []
+total_close_price = 0
 current_simple_moving_average = 0
+current_exponential_moving_average = 0
 
 
 class CrossoverIndicator(Enum):
@@ -56,16 +59,23 @@ class BinanceKlineWebSocketHandler(tornado.websocket.WebSocketHandler):
                             csv_data = [formatted_datetime, open_price, high_price, low_price, close_price, volume]
                             writer.writerow(dict(zip(KLINE_COLUMN_HEADERS, csv_data)))
 
-                        global current_total_close_price
-                        global current_total_periods
+                        global close_price_window
+                        global total_close_price
                         global current_simple_moving_average
-                        current_total_close_price += float(close_price)
-                        current_total_periods += 1
-                        if current_total_periods == 5:
-                            current_simple_moving_average = current_total_close_price / current_total_periods
+                        global current_exponential_moving_average
+                        close_price_window.append(float(close_price))
+                        total_close_price += float(close_price)
+                        if len(close_price_window) > NUMBER_OF_PERIODS:
+                            total_close_price -= close_price_window.pop(0)
+                            current_simple_moving_average = total_close_price / NUMBER_OF_PERIODS
                             print(f"Current 5mins SMA: {current_simple_moving_average}")
-                            current_total_close_price = 0
-                            current_total_periods = 0
+                            if current_exponential_moving_average == 0:
+                                current_exponential_moving_average = current_simple_moving_average
+                            else:
+                                multiplier = (SMOOTHING_FACTOR / (1 + NUMBER_OF_PERIODS))
+                                current_exponential_moving_average = float(close_price) * multiplier + current_exponential_moving_average * (1 - multiplier)
+                                print(f"Current 5mins EMA: {current_exponential_moving_average}")
+
 
             except Exception as e:
                 print(f"Error processing message: {e}")
