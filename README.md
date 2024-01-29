@@ -1,6 +1,6 @@
 <div align="center">
-  <h3>Short-term Crossover Tracking with BTC/USDT</h3>
-  <p>Identifying trends using Moving Average crossovers on real-time BTC/USDT prices</p>
+  <h1>Short-term Crossover Tracking with BTC/USDT</h3>
+  <p>Identifying trends using Moving Average crossovers on real-time BTC/USDT prices | Trend-following Trading Strategy</p>
 </div>
 
 ## About The Project
@@ -86,6 +86,18 @@
 > Comparing 5mins and 25mins Simple Moving Average
 * Shorter timeframes can react more quickly to price changes
 * Longer timeframes can provide a smoother trend indication but may lag in responding to rapid price movements
+
+### Backtesting
+* Using historical kline data from `01-01-2024`, we applied the 5mins and 25mins SMA Crossover to derive trading actions
+* If the 5mins SMA rose above the 25mins SMA, we would perform a buy, and conversely if the 5mins SMA dipped below the 25mins SMA, we would perform a sell
+* Terminal return: `-0.927%`
+  * This could have been impacted from highly volatile short-term fluctuations where short-term trends do not reflect sufficient momentum to see profit
+
+<div>
+  <img src="assets/graph3.png">
+</div>
+
+> Green arrows indicate a buying action and Red arrows indicate a selling action
 
 ### Improvements
 #### Likelihood of false signals
