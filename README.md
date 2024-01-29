@@ -87,6 +87,7 @@
 * Shorter timeframes can react more quickly to price changes
 * Longer timeframes can provide a smoother trend indication but may lag in responding to rapid price movements
 
+
 ### Backtesting
 * Using historical kline data from `01-01-2024`, we applied the 5mins and 25mins SMA Crossover to derive trading actions
 * If the 5mins SMA rose above the 25mins SMA, we would perform a buy, and conversely if the 5mins SMA dipped below the 25mins SMA, we would perform a sell
@@ -98,6 +99,18 @@
 </div>
 
 > Green arrows indicate a buying action and Red arrows indicate a selling action
+
+
+#### Modified Moving Average Intervals
+* Terminal return: `+7.083%`
+
+<div>
+  <img src="assets/graph4.png">
+</div>
+
+* Using a longer timeframe and moving average of 3 days and 10 days, we were able to see much better returns
+* While this would be an unfair comparison to make with the initial test due to the vast difference in time horizon, it still shows that Trend-Following can be a valid trading strategy given the right parameters
+
 
 ### Improvements
 #### Likelihood of false signals
